@@ -4,17 +4,27 @@ from sqlalchemy.orm import Session
 import models
 import schemas
 
-from database import engine, get_db, Base
+from database import engine, Base, get_db
 
 app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
 
 
+# ==================================================
+# HOME
+# ==================================================
+
 @app.get("/")
 def home():
-    return {"mensagem": "API da Pizzaria Online"}
+    return {
+        "mensagem": "API da Pizzaria Online"
+    }
 
+
+# ==================================================
+# PIZZAS
+# ==================================================
 
 @app.post("/pizzas")
 def criar_pizza(
@@ -62,7 +72,9 @@ def atualizar_pizza(
     ).first()
 
     if not pizza_db:
-        return {"erro": "Pizza não encontrada"}
+        return {
+            "erro": "Pizza não encontrada"
+        }
 
     pizza_db.nome = pizza.nome
     pizza_db.descricao = pizza.descricao
@@ -84,9 +96,73 @@ def deletar_pizza(
     ).first()
 
     if not pizza_db:
-        return {"erro": "Pizza não encontrada"}
+        return {
+            "erro": "Pizza não encontrada"
+        }
 
     db.delete(pizza_db)
     db.commit()
 
-    return {"mensagem": "Pizza removida"}
+    return {
+        "mensagem": "Pizza removida"
+    }
+
+
+# ==================================================
+# PEDIDOS
+# ==================================================
+
+@app.post("/pedidos")
+def criar_pedido(
+    pedido: schemas.PedidoCreate,
+    db: Session = Depends(get_db)
+):
+    novo_pedido = models.Pedido(
+        cliente=pedido.cliente
+    )
+
+    db.add(novo_pedido)
+    db.commit()
+    db.refresh(novo_pedido)
+
+    return novo_pedido
+
+
+@app.get("/pedidos")
+def listar_pedidos(
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Pedido).all()
+
+
+@app.get("/pedidos/{pedido_id}")
+def buscar_pedido(
+    pedido_id: int,
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Pedido).filter(
+        models.Pedido.id == pedido_id
+    ).first()
+
+
+@app.put("/pedidos/{pedido_id}/status")
+def atualizar_status(
+    pedido_id: int,
+    status: str,
+    db: Session = Depends(get_db)
+):
+    pedido = db.query(models.Pedido).filter(
+        models.Pedido.id == pedido_id
+    ).first()
+
+    if not pedido:
+        return {
+            "erro": "Pedido não encontrado"
+        }
+
+    pedido.status = status
+
+    db.commit()
+    db.refresh(pedido)
+
+    return pedido
