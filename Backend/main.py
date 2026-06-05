@@ -1,12 +1,8 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 
-import models
-import schemas
-import redis_cache
-import rabbitmq_producer
-
-from database import engine, Base, get_db
+from . import models, schemas, redis_cache, rabbitmq_producer
+from .database import engine, Base, get_db
 
 app = FastAPI()
 
