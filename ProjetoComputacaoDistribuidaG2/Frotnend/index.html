@@ -13,6 +13,7 @@
             --primary: #d9534f;
             --primary-dark: #c9302c;
             --border: #e1e3ea;
+            --dark: #333;
         }
 
         * {
@@ -33,18 +34,7 @@
             gap: 20px;
         }
 
-        header {
-            text-align: center;
-            padding: 24px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-        }
-
-        header h1 {
-            margin: 0 0 8px;
-        }
-
+        header,
         .card {
             background: var(--card);
             border: 1px solid var(--border);
@@ -52,11 +42,12 @@
             padding: 20px;
         }
 
-        .admin-card {
-            background: #fff8f4;
-            border-color: #f1c0b9;
+        header {
+            text-align: center;
+            padding: 24px;
         }
 
+        header h1,
         .card h2 {
             margin-top: 0;
         }
@@ -105,14 +96,25 @@
             padding: 10px 12px;
             border-bottom: 1px solid var(--border);
             text-align: left;
+            vertical-align: top;
         }
 
         th {
             color: var(--muted);
         }
 
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
         .status-button {
-            background: #333;
+            background: var(--dark);
             padding: 8px 12px;
             border-radius: 10px;
         }
@@ -130,6 +132,11 @@
             .container {
                 width: calc(100% - 24px);
             }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
@@ -137,22 +144,32 @@
     <div class="container">
         <header>
             <h1>Pizzaria Online</h1>
-            <p>Área do cliente: faça pedidos e veja o cardápio.</p>
-            <p><a href="admin.html">Ir para painel de administração</a></p>
+            <p>Area do cliente: faca pedidos e acompanhe o cardapio.</p>
+            <p><a href="admin.html">Ir para painel de administracao</a></p>
         </header>
 
         <section class="card">
-            <h2>Cardápio de Pizzas</h2>
+            <h2>Cardapio de Pizzas</h2>
             <div id="pizza-list">Carregando pizzas...</div>
         </section>
 
         <section class="card">
             <h2>Novo Pedido</h2>
             <form id="pedido-form">
-                <label>Nome do Cliente</label>
+                <label for="pedido-cliente">Nome do Cliente</label>
                 <input type="text" id="pedido-cliente" required />
                 <button type="submit">Criar Pedido</button>
             </form>
+        </section>
+
+        <section class="card">
+            <h2>Buscar Pedido</h2>
+            <form id="pedido-search-form">
+                <label for="pedido-search-id">ID do Pedido</label>
+                <input type="number" id="pedido-search-id" min="1" required />
+                <button type="submit">Buscar Pedido</button>
+            </form>
+            <div id="pedido-search-result"></div>
         </section>
 
         <section class="card">
@@ -165,8 +182,10 @@
         const baseUrl = "http://127.0.0.1:8000";
 
         const pedidoForm = document.getElementById("pedido-form");
+        const pedidoSearchForm = document.getElementById("pedido-search-form");
         const pizzaList = document.getElementById("pizza-list");
         const pedidoList = document.getElementById("pedido-list");
+        const pedidoSearchResult = document.getElementById("pedido-search-result");
 
         async function fetchPizzas() {
             try {
@@ -174,7 +193,7 @@
                 const pizzas = await response.json();
                 renderPizzas(pizzas);
             } catch (error) {
-                pizzaList.innerHTML = `<p class="message">Erro ao carregar pizzas. Verifique se o backend está rodando.</p>`;
+                pizzaList.innerHTML = `<p class="message">Erro ao carregar pizzas. Verifique se o backend esta rodando.</p>`;
             }
         }
 
@@ -182,9 +201,9 @@
             try {
                 const response = await fetch(`${baseUrl}/pedidos`);
                 const pedidos = await response.json();
-                renderPedidos(pedidos);
+                renderPedidos(pedidoList, pedidos);
             } catch (error) {
-                pedidoList.innerHTML = `<p class="message">Erro ao carregar pedidos. Verifique se o backend está rodando.</p>`;
+                pedidoList.innerHTML = `<p class="message">Erro ao carregar pedidos. Verifique se o backend esta rodando.</p>`;
             }
         }
 
@@ -197,7 +216,7 @@
             pizzaList.innerHTML = `
                 <table>
                     <thead>
-                        <tr><th>ID</th><th>Nome</th><th>Descrição</th><th>Preço</th></tr>
+                        <tr><th>ID</th><th>Nome</th><th>Descricao</th><th>Preco</th></tr>
                     </thead>
                     <tbody>
                         ${pizzas
@@ -207,7 +226,7 @@
                                 <td>${pizza.id}</td>
                                 <td>${pizza.nome}</td>
                                 <td>${pizza.descricao}</td>
-                                <td>R$ ${pizza.preco.toFixed(2)}</td>
+                                <td>R$ ${Number(pizza.preco).toFixed(2)}</td>
                             </tr>`
                             )
                             .join("")}
@@ -216,30 +235,29 @@
             `;
         }
 
-        function renderPedidos(pedidos) {
+        function pedidoRow(pedido) {
+            return `
+                <tr>
+                    <td>${pedido.id}</td>
+                    <td>${pedido.cliente}</td>
+                    <td>${pedido.status}</td>
+                    <td><button class="status-button" onclick="updateStatus(${pedido.id})">Atualizar status</button></td>
+                </tr>
+            `;
+        }
+
+        function renderPedidos(target, pedidos) {
             if (!pedidos.length) {
-                pedidoList.innerHTML = `<p class="message">Nenhum pedido registrado.</p>`;
+                target.innerHTML = `<p class="message">Nenhum pedido registrado.</p>`;
                 return;
             }
 
-            pedidoList.innerHTML = `
+            target.innerHTML = `
                 <table>
                     <thead>
-                        <tr><th>ID</th><th>Cliente</th><th>Status</th><th>Ação</th></tr>
+                        <tr><th>ID</th><th>Cliente</th><th>Status</th><th>Acao</th></tr>
                     </thead>
-                    <tbody>
-                        ${pedidos
-                            .map(
-                                pedido => `
-                            <tr>
-                                <td>${pedido.id}</td>
-                                <td>${pedido.cliente}</td>
-                                <td>${pedido.status}</td>
-                                <td><button class="status-button" onclick="updateStatus(${pedido.id})">Atualizar status</button></td>
-                            </tr>`
-                            )
-                            .join("")}
-                    </tbody>
+                    <tbody>${pedidos.map(pedidoRow).join("")}</tbody>
                 </table>
             `;
         }
@@ -266,6 +284,21 @@
             }
         });
 
+        pedidoSearchForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const pedidoId = document.getElementById("pedido-search-id").value;
+            if (!pedidoId) return;
+
+            try {
+                const response = await fetch(`${baseUrl}/pedidos/${pedidoId}`);
+                const pedido = await response.json();
+                renderPedidos(pedidoSearchResult, pedido ? [pedido] : []);
+            } catch (error) {
+                pedidoSearchResult.innerHTML = `<p class="message">Erro ao buscar pedido.</p>`;
+            }
+        });
+
         window.updateStatus = async function (pedidoId) {
             const novoStatus = prompt("Novo status do pedido:", "Em preparo");
             if (!novoStatus) return;
@@ -279,6 +312,7 @@
                 });
 
                 fetchPedidos();
+                pedidoSearchResult.innerHTML = "";
             } catch (error) {
                 alert("Erro ao atualizar status. Verifique o backend.");
             }
