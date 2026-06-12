@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel de Administração - Pizzaria Online</title>
+    <style>
+        :root {
+            --bg: #f4f4f8;
+            --card: #ffffff;
+            --text: #222;
+            --muted: #666;
+            --primary: #d9534f;
+            --primary-dark: #c9302c;
+            --border: #e1e3ea;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            width: min(1100px, calc(100% - 32px));
+            margin: 24px auto;
+            display: grid;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        form {
+            display: grid;
+            gap: 12px;
+        }
+
+        label {
+            font-size: 0.95rem;
+            color: var(--muted);
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-size: 1rem;
+        }
+
+        button {
+            width: fit-content;
+            padding: 11px 18px;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        th {
+            color: var(--muted);
+        }
+
+        .message {
+            margin-top: 12px;
+            color: var(--muted);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                width: calc(100% - 24px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Painel de Administração</h1>
+            <p>Cadastre novos tipos de pizza e visualize o cardápio.</p>
+            <p><a href="index.html">Voltar para página do cliente</a></p>
+        </header>
+
+        <section class="card">
+            <h2>Cadastro de Pizza</h2>
+            <form id="pizza-form">
+                <label>Nome</label>
+                <input type="text" id="pizza-nome" required />
+
+                <label>Descrição</label>
+                <input type="text" id="pizza-descricao" required />
+
+                <label>Preço</label>
+                <input type="number" id="pizza-preco" step="0.01" min="0" required />
+
+                <button type="submit">Adicionar Pizza</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Cardápio Atual</h2>
+            <div id="pizza-list">Carregando pizzas...</div>
+        </section>
+    </div>
+
+    <script>
+        const baseUrl = "http://127.0.0.1:8000";
+
+        const pizzaForm = document.getElementById("pizza-form");
+        const pizzaList = document.getElementById("pizza-list");
+
+        async function fetchPizzas() {
+            try {
+                const response = await fetch(`${baseUrl}/pizzas`);
+                const pizzas = await response.json();
+                renderPizzas(pizzas);
+            } catch (error) {
+                pizzaList.innerHTML = `<p class="message">Erro ao carregar pizzas. Verifique se o backend está rodando.</p>`;
+            }
+        }
+
+        function renderPizzas(pizzas) {
+            if (!pizzas.length) {
+                pizzaList.innerHTML = `<p class="message">Nenhuma pizza encontrada.</p>`;
+                return;
+            }
+
+            pizzaList.innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Nome</th><th>Descrição</th><th>Preço</th></tr>
+                    </thead>
+                    <tbody>
+                        ${pizzas
+                            .map(
+                                pizza => `
+                            <tr>
+                                <td>${pizza.id}</td>
+                                <td>${pizza.nome}</td>
+                                <td>${pizza.descricao}</td>
+                                <td>R$ ${pizza.preco.toFixed(2)}</td>
+                            </tr>`
+                            )
+                            .join("")}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        pizzaForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const nome = document.getElementById("pizza-nome").value.trim();
+            const descricao = document.getElementById("pizza-descricao").value.trim();
+            const preco = parseFloat(document.getElementById("pizza-preco").value);
+
+            if (!nome || !descricao || Number.isNaN(preco)) return;
+
+            try {
+                await fetch(`${baseUrl}/pizzas`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ nome, descricao, preco })
+                });
+
+                pizzaForm.reset();
+                fetchPizzas();
+            } catch (error) {
+                alert("Erro ao cadastrar pizza. Verifique o backend.");
+            }
+        });
+
+        fetchPizzas();
+    </script>
+</body>
+</html>
